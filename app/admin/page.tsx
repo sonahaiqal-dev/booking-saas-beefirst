@@ -32,6 +32,20 @@ export default function AdminDashboard() {
 
   useEffect(() => { fetchData() }, [])
 
+  // FITUR: Hapus Bookingan
+  const handleDeleteBooking = async (id: string) => {
+    const konfirmasi = confirm("Apakah Anda yakin ingin menghapus data booking ini?")
+    if (konfirmasi) {
+      const { error } = await supabase.from('bookings').delete().eq('id', id)
+      if (error) {
+        alert("Gagal menghapus data!")
+      } else {
+        alert("Data booking berhasil dihapus!")
+        fetchData() // Refresh data otomatis setelah hapus
+      }
+    }
+  }
+
   const handleUpdateSettings = async (e: React.FormEvent) => {
     e.preventDefault()
     const { error } = await supabase.from('settings').update(settings).eq('id', 1)
@@ -99,7 +113,7 @@ export default function AdminDashboard() {
         <div className="max-w-6xl mx-auto">
           
           <header className="flex justify-between items-center mb-10">
-            <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-slate-900 capitalize">{activeTab}</h1>
+            <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-slate-900 capitalize leading-none">{activeTab}</h1>
             <button onClick={fetchData} className="hidden md:flex items-center gap-3 px-6 py-3 bg-white border-2 border-slate-200 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all">
               <RefreshCw size={16}/> Refresh
             </button>
@@ -131,11 +145,11 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* TAB: BOOKINGS LIST */}
+          {/* TAB: BOOKINGS LIST (DENGAN FITUR HAPUS) */}
           {activeTab === 'list' && (
             <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left min-w-[700px]">
+                <table className="w-full text-left min-w-[750px]">
                   <thead className="bg-slate-100 border-b-2 border-slate-200 font-black text-slate-900 uppercase text-[11px] tracking-widest">
                     <tr>
                       <th className="p-6">Pelanggan</th>
@@ -147,10 +161,28 @@ export default function AdminDashboard() {
                   <tbody className="divide-y divide-slate-100 text-slate-900 font-black">
                     {bookings.map(b => (
                       <tr key={b.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="p-6 font-black uppercase">{b.customer_name}<p className="text-[10px] text-slate-400 font-mono font-normal">{b.customer_wa}</p></td>
-                        <td className="p-6"><span className="px-3 py-1 bg-slate-900 text-white rounded-full text-[9px] font-black uppercase">{b.service_name}</span></td>
+                        <td className="p-6 font-black uppercase">
+                            {b.customer_name}
+                            <p className="text-[10px] text-slate-400 font-mono font-normal">{b.customer_wa}</p>
+                        </td>
+                        <td className="p-6">
+                            <span className="px-3 py-1 bg-slate-900 text-white rounded-full text-[9px] font-black uppercase">
+                                {b.service_name}
+                            </span>
+                        </td>
                         <td className="p-6 text-xs uppercase">{b.booking_date} | {b.booking_time}</td>
-                        <td className="p-6"><a href={`https://wa.me/${b.customer_wa}`} target="_blank" className="text-green-600"><MessageSquare size={20}/></a></td>
+                        <td className="p-6 flex items-center gap-4">
+                          <a href={`https://wa.me/${b.customer_wa}`} target="_blank" className="text-green-600 hover:scale-110 transition-transform">
+                            <MessageSquare size={20}/>
+                          </a>
+                          {/* TOMBOL HAPUS BARU */}
+                          <button 
+                            onClick={() => handleDeleteBooking(b.id)}
+                            className="text-red-400 hover:text-red-600 hover:scale-110 transition-all"
+                          >
+                            <Trash2 size={20}/>
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -159,7 +191,7 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* TAB: SERVICES */}
+          {/* TAB: SERVICES & SETTINGS (LENGKAP) */}
           {activeTab === 'services' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
               <form className="bg-white p-8 rounded-[2.5rem] border-2 border-slate-200 space-y-5 h-fit shadow-xl">
@@ -175,7 +207,11 @@ export default function AdminDashboard() {
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-black">
                     {services.map(s => (
-                      <tr key={s.id}><td className="p-6 uppercase">{s.name}</td><td className="p-6 font-mono">Rp {s.price.toLocaleString()}</td><td className="p-6 text-slate-300"><Trash2 size={20}/></td></tr>
+                      <tr key={s.id}>
+                        <td className="p-6 uppercase">{s.name}</td>
+                        <td className="p-6 font-mono">Rp {s.price.toLocaleString()}</td>
+                        <td className="p-6 text-slate-300 hover:text-red-600 cursor-pointer transition-colors"><Trash2 size={20}/></td>
+                      </tr>
                     ))}
                   </tbody>
                 </table>
@@ -183,7 +219,6 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* TAB: SETTINGS */}
           {activeTab === 'settings' && (
             <form onSubmit={handleUpdateSettings} className="max-w-3xl bg-white p-10 rounded-[3.5rem] shadow-2xl border border-slate-100 space-y-10">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
@@ -200,8 +235,8 @@ export default function AdminDashboard() {
                 <div className="space-y-3">
                   <label className="text-[11px] font-black text-slate-900 uppercase tracking-widest ml-2">Warna Branding</label>
                   <div className="flex gap-4 items-center bg-slate-50 p-4 rounded-3xl border-2 border-slate-200">
-                    <input type="color" value={settings.primary_color} onChange={e => setSettings({...settings, primary_color: e.target.value})} className="h-14 w-20 rounded-2xl cursor-pointer" />
-                    <span className="text-slate-900 font-black uppercase font-mono text-sm">{settings.primary_color}</span>
+                    <input type="color" value={settings.primary_color} onChange={e => setSettings({...settings, primary_color: e.target.value})} className="h-14 w-20 rounded-2xl cursor-pointer shadow-inner" />
+                    <span className="text-slate-900 font-black uppercase font-mono text-sm tracking-widest">{settings.primary_color}</span>
                   </div>
                 </div>
                 <div className="space-y-3">
