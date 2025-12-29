@@ -2,14 +2,22 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useRouter } from 'next/navigation'
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid 
 } from 'recharts'
 import { 
-  LayoutDashboard, CalendarDays, Settings, Users, Wallet, RefreshCw, MessageSquare, Menu, X, Trash2, Plus, Filter, ImageIcon, Upload 
+  LayoutDashboard, CalendarDays, Settings, Users, Wallet, RefreshCw, 
+  MessageSquare, Menu, X, Trash2, Plus, Filter, ImageIcon, Lock, LogOut 
 } from 'lucide-react'
 
 export default function AdminDashboard() {
+  const router = useRouter()
+  const [session, setSession] = useState<any>(null)
+  const [loginEmail, setLoginEmail] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+  const [authLoading, setAuthLoading] = useState(true)
+
   const [activeTab, setActiveTab] = useState('overview')
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [bookings, setBookings] = useState<any[]>([])
@@ -18,10 +26,41 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
 
-  // Filter Grafik & Form Layanan Baru
   const [timeFilter, setTimeFilter] = useState('7')
   const [newService, setNewService] = useState({ name: '', price: 0 })
 
+  // --- LOGIKA AUTENTIKASI ---
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      setSession(session)
+      setAuthLoading(false)
+      if (session) fetchData()
+    }
+    checkUser()
+  }, [])
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setAuthLoading(true)
+    const { error } = await supabase.auth.signInWithPassword({
+      email: loginEmail,
+      password: loginPassword,
+    })
+    if (error) {
+      alert("Gagal Login: " + error.message)
+      setAuthLoading(false)
+    } else {
+      window.location.reload() // Refresh untuk memicu fetchData
+    }
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    window.location.reload()
+  }
+
+  // --- LOGIKA DATA ---
   const fetchData = async () => {
     setLoading(true)
     try {
@@ -33,16 +72,6 @@ export default function AdminDashboard() {
       if (svData) setServices(svData)
     } catch (e) { console.error("Sync Error:", e) }
     setLoading(false)
-  }
-
-  useEffect(() => { fetchData() }, [])
-
-  // --- LOGIKA ACTIONS ---
-  const handleDeleteBooking = async (id: string) => {
-    if (confirm("Hapus data booking ini?")) {
-      const { error } = await supabase.from('bookings').delete().eq('id', id)
-      if (!error) fetchData()
-    }
   }
 
   const handleAddService = async (e: React.FormEvent) => {
@@ -63,38 +92,22 @@ export default function AdminDashboard() {
     }
   }
 
- const handleLogoUpload = async (event: any) => {
+  const handleLogoUpload = async (event: any) => {
     try {
       setUploading(true)
       const file = event.target.files[0]
       if (!file) return
-
       const fileExt = file.name.split('.').pop()
       const fileName = `logo-${Math.random()}.${fileExt}`
       const filePath = `${fileName}`
-
-      // 1. Upload file
-      const { error: uploadError } = await supabase.storage
-        .from('logos')
-        .upload(filePath, file)
-
+      const { error: uploadError } = await supabase.storage.from('logos').upload(filePath, file)
       if (uploadError) throw uploadError
-
-      // 2. AMBIL URL PUBLIK (PASTIKAN INI JALAN)
       const { data } = supabase.storage.from('logos').getPublicUrl(filePath)
       const publicUrl = data.publicUrl
-
-      // 3. SIMPAN KE DATABASE
-      const { error: dbError } = await supabase.from('settings')
-        .update({ logo_url: publicUrl })
-        .eq('id', 1)
-
+      const { error: dbError } = await supabase.from('settings').update({ logo_url: publicUrl }).eq('id', 1)
       if (dbError) throw dbError
-
-      // 4. Update tampilan
       setSettings({ ...settings, logo_url: publicUrl })
       alert("Logo Berhasil Diperbarui!")
-      
     } catch (error: any) {
       alert("Error: " + error.message)
     } finally {
@@ -108,7 +121,6 @@ export default function AdminDashboard() {
     if (!error) alert("Sistem Beefirst Visual Berhasil Diupdate!")
   }
 
-  // --- LOGIKA FILTER GRAFIK ---
   const getFilteredChartData = () => {
     const now = new Date();
     const filterDays = parseInt(timeFilter);
@@ -127,6 +139,42 @@ export default function AdminDashboard() {
     return reduced.sort((a, b) => new Date(a.name).getTime() - new Date(b.name).getTime());
   };
 
+  // --- VIEW: LOADING AUTH ---
+  if (authLoading) return (
+    <div className="h-screen flex items-center justify-center font-black uppercase text-[10px] tracking-widest text-slate-400 animate-pulse">
+      Authenticating Beefirst System...
+    </div>
+  )
+
+  // --- VIEW: LOGIN FORM ---
+  if (!session) return (
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
+      <div className="w-full max-w-md bg-white p-10 rounded-[3rem] shadow-2xl border-4 border-slate-800">
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-16 h-16 bg-slate-900 text-white rounded-3xl flex items-center justify-center mb-4 shadow-xl">
+            <Lock size={32} />
+          </div>
+          <h2 className="text-3xl font-black tracking-tighter uppercase italic">Admin Login</h2>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-2">Beefirst Visual Access</p>
+        </div>
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div className="space-y-1">
+            <label className="text-[10px] font-black uppercase tracking-widest ml-1">Email</label>
+            <input required type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold focus:border-slate-900 outline-none transition-all" placeholder="admin@beefirst.com" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-black uppercase tracking-widest ml-1">Password</label>
+            <input required type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold focus:border-slate-900 outline-none transition-all" placeholder="••••••••" />
+          </div>
+          <button type="submit" className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-[0.3em] shadow-2xl hover:brightness-125 active:scale-95 transition-all">
+            Enter Dashboard
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+
+  // --- VIEW: DASHBOARD UTAMA ---
   if (loading || !settings) return <div className="h-screen flex items-center justify-center font-black uppercase text-[10px] tracking-widest">Beefirst System Loading...</div>
 
   return (
@@ -135,8 +183,8 @@ export default function AdminDashboard() {
       {/* HEADER MOBILE */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-20 bg-slate-900 px-6 flex justify-between items-center z-[100] shadow-xl">
         <div className="flex items-center gap-3">
-          {settings.logo_url && <img src={settings.logo_url} className="h-8 w-8 object-contain rounded-lg bg-white p-1" />}
-          <span className="font-black text-white uppercase tracking-tighter text-sm">ADMIN</span>
+          {settings.logo_url && <img src={settings.logo_url} className="h-8 w-8 object-contain rounded-lg bg-white p-1 shadow-md" />}
+          <span className="font-black text-white uppercase tracking-tighter text-sm italic">ADMIN</span>
         </div>
         <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-3 bg-white text-slate-900 rounded-xl">
           {isMenuOpen ? <X size={20}/> : <Menu size={20}/>}
@@ -149,14 +197,22 @@ export default function AdminDashboard() {
         <aside className="relative w-72 bg-white border-r-2 border-slate-200 h-full p-8 flex flex-col shadow-2xl lg:shadow-none overflow-y-auto">
           <div className="mb-10 hidden lg:block">
             {settings.logo_url && <img src={settings.logo_url} className="h-12 object-contain mb-4" />}
-            <h2 className="font-black text-xl tracking-tighter uppercase">Beefirst Visual</h2>
+            <h2 className="font-black text-2xl tracking-tighter uppercase italic">Beefirst</h2>
           </div>
-          <nav className="space-y-2 mt-10 lg:mt-0">
+          <nav className="space-y-2 mt-10 lg:mt-0 flex-1">
             <SidebarItem active={activeTab === 'overview'} label="Overview" icon={<LayoutDashboard size={18}/>} onClick={() => {setActiveTab('overview'); setIsMenuOpen(false)}} />
             <SidebarItem active={activeTab === 'list'} label="Bookings" icon={<CalendarDays size={18}/>} onClick={() => {setActiveTab('list'); setIsMenuOpen(false)}} />
-            <SidebarItem active={activeTab === 'services'} label="Manage Service" icon={<Plus size={18}/>} onClick={() => {setActiveTab('services'); setIsMenuOpen(false)}} />
+            <SidebarItem active={activeTab === 'services'} label="Services" icon={<Plus size={18}/>} onClick={() => {setActiveTab('services'); setIsMenuOpen(false)}} />
             <SidebarItem active={activeTab === 'settings'} label="Settings" icon={<Settings size={18}/>} onClick={() => {setActiveTab('settings'); setIsMenuOpen(false)}} />
           </nav>
+          
+          {/* TOMBOL LOGOUT */}
+          <button 
+            onClick={handleLogout}
+            className="mt-10 flex items-center gap-4 p-4 rounded-xl font-black uppercase text-[10px] tracking-widest text-red-500 hover:bg-red-50 transition-all border-t border-slate-100 pt-8"
+          >
+            <LogOut size={18} /> Log Out System
+          </button>
         </aside>
       </div>
 
@@ -164,11 +220,10 @@ export default function AdminDashboard() {
       <main className="flex-1 p-6 lg:p-12 pt-28 lg:pt-12 overflow-x-hidden">
         <div className="max-w-6xl mx-auto">
           <header className="flex justify-between items-center mb-10">
-            <h1 className="text-4xl font-black tracking-tighter capitalize leading-none">{activeTab}</h1>
+            <h1 className="text-4xl font-black tracking-tighter capitalize leading-none italic">{activeTab}</h1>
             <button onClick={fetchData} className="p-3 bg-white border-2 border-slate-200 rounded-xl hover:bg-slate-50 transition-all"><RefreshCw size={14}/></button>
           </header>
 
-          {/* TAB: OVERVIEW */}
           {activeTab === 'overview' && (
             <div className="space-y-10">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -177,7 +232,7 @@ export default function AdminDashboard() {
                 <StatCard label="Layanan Aktif" value={services.length} color="text-purple-600" bg="bg-purple-100" />
               </div>
               <div className="bg-white p-6 md:p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <div className="flex justify-between items-center mb-8">
                   <h3 className="font-black text-[10px] uppercase tracking-widest text-slate-400">Statistik Aktivitas</h3>
                   <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
                     <FilterBtn label="3H" active={timeFilter === '3'} onClick={() => setTimeFilter('3')} />
@@ -186,14 +241,14 @@ export default function AdminDashboard() {
                     <FilterBtn label="1T" active={timeFilter === '365'} onClick={() => setTimeFilter('365')} />
                   </div>
                 </div>
-                <div style={{ width: '100%', height: 350 }}>
+                <div style={{ width: '100%', height: 300 }}>
                   <ResponsiveContainer>
                     <BarChart data={getFilteredChartData()}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
-                      <XAxis dataKey="name" fontSize={9} axisLine={false} tickLine={false} tick={{fill: '#000', fontWeight: 'bold'}} />
-                      <YAxis fontSize={9} axisLine={false} tickLine={false} tick={{fill: '#000', fontWeight: 'bold'}} />
+                      <XAxis dataKey="name" fontSize={9} tick={{fill: '#000', fontWeight: 'bold'}} axisLine={false} tickLine={false} />
+                      <YAxis fontSize={9} tick={{fill: '#000', fontWeight: 'bold'}} axisLine={false} tickLine={false} />
                       <Tooltip cursor={{fill: '#f8fafc'}} />
-                      <Bar dataKey="total" fill={settings.primary_color} radius={[8, 8, 0, 0]} barSize={40} />
+                      <Bar dataKey="total" fill={settings.primary_color} radius={[5, 5, 0, 0]} barSize={40} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -201,23 +256,22 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* TAB: BOOKINGS */}
           {activeTab === 'list' && (
             <div className="bg-white rounded-[2rem] shadow-xl border border-slate-100 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left min-w-[700px]">
-                  <thead className="bg-slate-50 border-b-2 border-slate-200 font-black uppercase text-[10px] tracking-widest text-slate-900">
-                    <tr><th className="p-6">Customer</th><th className="p-6">Layanan</th><th className="p-6">Waktu</th><th className="p-6 text-center">Aksi</th></tr>
+                  <thead className="bg-slate-50 border-b-2 border-slate-200 font-black uppercase text-[10px] tracking-widest text-slate-900 text-center">
+                    <tr><th className="p-6">Customer</th><th className="p-6">Layanan</th><th className="p-6">Waktu</th><th className="p-6">Aksi</th></tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-bold text-slate-900 uppercase">
                     {bookings.map(b => (
-                      <tr key={b.id} className="text-xs">
-                        <td className="p-6 font-black">{b.customer_name}<p className="text-[10px] text-slate-400 font-normal">{b.customer_wa}</p></td>
-                        <td className="p-6"><span className="px-3 py-1 bg-slate-900 text-white rounded-full text-[8px] font-black">{b.service_name}</span></td>
-                        <td className="p-6 font-mono text-[10px]">{b.booking_date} | {b.booking_time}</td>
+                      <tr key={b.id} className="text-xs text-center">
+                        <td className="p-6 font-black uppercase text-xs">{b.customer_name}<p className="text-[10px] text-slate-400 font-normal">{b.customer_wa}</p></td>
+                        <td className="p-6"><span className="px-3 py-1 bg-slate-900 text-white rounded-full text-[8px] font-black uppercase">{b.service_name}</span></td>
+                        <td className="p-6 text-[10px] uppercase font-mono">{b.booking_date} | {b.booking_time}</td>
                         <td className="p-6 flex justify-center gap-4">
-                          <a href={`https://wa.me/${b.customer_wa}`} target="_blank" className="text-green-600"><MessageSquare size={18}/></a>
-                          <button onClick={() => handleDeleteBooking(b.id)} className="text-red-400"><Trash2 size={18}/></button>
+                          <a href={`https://wa.me/${b.customer_wa}`} target="_blank" className="text-green-600 hover:scale-125 transition-transform"><MessageSquare size={18}/></a>
+                          <button onClick={() => {if(confirm("Hapus?")) supabase.from('bookings').delete().eq('id', b.id).then(() => fetchData())}} className="text-red-400 hover:scale-125 transition-transform"><Trash2 size={18}/></button>
                         </td>
                       </tr>
                     ))}
@@ -227,23 +281,22 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* TAB: MANAGE SERVICES */}
           {activeTab === 'services' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <form onSubmit={handleAddService} className="bg-white p-8 rounded-[2rem] border-2 border-slate-200 space-y-4 h-fit shadow-lg">
-                <h3 className="font-black text-[10px] uppercase tracking-widest mb-2">Layanan Baru</h3>
-                <input value={newService.name} onChange={e => setNewService({...newService, name: e.target.value})} className="w-full border-2 border-slate-200 p-4 rounded-xl font-bold text-sm bg-slate-50" placeholder="Nama Jasa" />
-                <input type="number" value={newService.price} onChange={e => setNewService({...newService, price: Number(e.target.value)})} className="w-full border-2 border-slate-200 p-4 rounded-xl font-bold text-sm bg-slate-50" placeholder="Harga (Rp)" />
-                <button type="submit" className="w-full bg-slate-900 text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest shadow-lg">Simpan Jasa</button>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+              <form onSubmit={handleAddService} className="bg-white p-8 rounded-[2.5rem] border-2 border-slate-200 space-y-5 h-fit shadow-xl">
+                <h3 className="font-black text-slate-900 uppercase text-xs tracking-widest mb-4">Layanan Baru</h3>
+                <input value={newService.name} onChange={e => setNewService({...newService, name: e.target.value})} className="w-full border-2 border-slate-200 p-4 rounded-2xl font-black bg-slate-50 text-sm" placeholder="e.g. Foto Katalog" />
+                <input type="number" value={newService.price} onChange={e => setNewService({...newService, price: Number(e.target.value)})} className="w-full border-2 border-slate-200 p-4 rounded-2xl font-black bg-slate-50 text-sm" placeholder="500000" />
+                <button type="submit" className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg">Simpan Jasa</button>
               </form>
-              <div className="lg:col-span-2 bg-white rounded-[2rem] border border-slate-100 shadow-xl overflow-hidden">
+              <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden">
                 <table className="w-full text-left">
-                  <thead className="bg-slate-50 border-b-2 border-slate-200 font-black text-[10px] uppercase tracking-widest text-slate-900">
+                  <thead className="bg-slate-100 border-b-2 border-slate-200 font-black text-slate-900 text-[10px] uppercase tracking-widest">
                     <tr><th className="p-6">Nama Jasa</th><th className="p-6 text-right">Harga</th><th className="p-6 text-center">Hapus</th></tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 font-bold uppercase text-xs text-slate-900">
+                  <tbody className="divide-y divide-slate-100 font-black text-slate-900 uppercase text-xs">
                     {services.map(s => (
-                      <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                      <tr key={s.id}>
                         <td className="p-6">{s.name}</td>
                         <td className="p-6 text-right font-mono">Rp {s.price.toLocaleString()}</td>
                         <td className="p-6 flex justify-center"><button onClick={() => handleDeleteService(s.id)} className="text-slate-300 hover:text-red-600"><Trash2 size={18}/></button></td>
@@ -255,7 +308,6 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* TAB: SETTINGS */}
           {activeTab === 'settings' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
               <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100 flex flex-col items-center">
@@ -269,26 +321,29 @@ export default function AdminDashboard() {
                 </label>
               </div>
               <div className="lg:col-span-2">
-                <form onSubmit={handleUpdateSettings} className="bg-white p-8 md:p-10 rounded-[3rem] shadow-xl border border-slate-100 space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <form onSubmit={handleUpdateSettings} className="bg-white p-8 md:p-12 rounded-[3.5rem] shadow-xl border border-slate-100 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black uppercase tracking-widest ml-1">Nama Bisnis</label>
-                      <input value={settings.business_name} onChange={e => setSettings({...settings, business_name: e.target.value})} className="w-full border-2 border-slate-200 p-4 rounded-xl font-bold text-sm bg-slate-50" />
+                      <label className="text-[10px] font-black uppercase tracking-widest ml-1 italic">Nama Bisnis</label>
+                      <input value={settings.business_name} onChange={e => setSettings({...settings, business_name: e.target.value})} className="w-full border-2 border-slate-200 p-5 rounded-3xl font-black text-slate-900 bg-white focus:border-slate-900 outline-none transition-all shadow-sm" />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black uppercase tracking-widest ml-1">WA Admin</label>
-                      <input value={settings.whatsapp_admin} onChange={e => setSettings({...settings, whatsapp_admin: e.target.value})} className="w-full border-2 border-slate-200 p-4 rounded-xl font-bold text-sm font-mono bg-slate-50" />
+                      <label className="text-[10px] font-black uppercase tracking-widest ml-1 italic">WhatsApp Admin</label>
+                      <input value={settings.whatsapp_admin} onChange={e => setSettings({...settings, whatsapp_admin: e.target.value})} className="w-full border-2 border-slate-200 p-5 rounded-3xl font-black text-slate-900 bg-white font-mono shadow-sm" />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black uppercase tracking-widest ml-1">Besar DP (Rp)</label>
-                      <input type="number" value={settings.dp_amount} onChange={e => setSettings({...settings, dp_amount: Number(e.target.value)})} className="w-full border-2 border-slate-200 p-4 rounded-xl font-bold text-sm bg-slate-50" />
+                      <label className="text-[10px] font-black uppercase tracking-widest ml-1 italic">Warna Branding</label>
+                      <div className="flex gap-4 items-center bg-slate-50 p-3 rounded-2xl border-2 border-slate-200">
+                        <input type="color" value={settings.primary_color} onChange={e => setSettings({...settings, primary_color: e.target.value})} className="h-12 w-20 rounded-xl cursor-pointer" />
+                        <span className="text-slate-900 font-black uppercase font-mono text-xs italic">{settings.primary_color}</span>
+                      </div>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black uppercase tracking-widest ml-1">Warna Tema</label>
-                      <input type="color" value={settings.primary_color} onChange={e => setSettings({...settings, primary_color: e.target.value})} className="w-full h-12 rounded-xl cursor-pointer" />
+                      <label className="text-[10px] font-black uppercase tracking-widest ml-1 italic">Besar DP (Rp)</label>
+                      <input type="number" value={settings.dp_amount} onChange={e => setSettings({...settings, dp_amount: Number(e.target.value)})} className="w-full border-2 border-slate-200 p-5 rounded-3xl font-black text-slate-900 bg-white shadow-sm" />
                     </div>
                   </div>
-                  <button type="submit" style={{backgroundColor: settings.primary_color}} className="w-full py-5 rounded-2xl font-black text-white text-xs uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all">Update Settings</button>
+                  <button type="submit" style={{backgroundColor: settings.primary_color}} className="w-full py-6 rounded-3xl font-black text-white text-xs uppercase tracking-[0.4em] shadow-2xl active:scale-95 transition-all">Update Pengaturan</button>
                 </form>
               </div>
             </div>
@@ -300,9 +355,10 @@ export default function AdminDashboard() {
   )
 }
 
+// --- KOMPONEN PENDUKUNG ---
 function SidebarItem({ active, icon, label, onClick }: any) {
   return (
-    <button onClick={onClick} className={`w-full flex items-center gap-4 p-4 rounded-xl font-black transition-all uppercase text-[10px] tracking-widest ${active ? 'bg-slate-900 text-white shadow-xl translate-x-1' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'}`}>
+    <button onClick={onClick} className={`w-full flex items-center gap-4 p-4 rounded-xl font-black transition-all uppercase text-[10px] tracking-widest ${active ? 'bg-slate-900 text-white shadow-xl translate-x-1 scale-105' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'}`}>
       {icon} {label}
     </button>
   )
@@ -318,11 +374,11 @@ function FilterBtn({ label, active, onClick }: any) {
 
 function StatCard({ label, value, color, bg }: any) {
   return (
-    <div className="bg-white p-8 rounded-[2rem] shadow-lg border border-slate-50 flex flex-col gap-4">
-      <div className={`w-12 h-12 ${bg} ${color} rounded-xl flex items-center justify-center`}><Wallet size={20}/></div>
+    <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-50 flex flex-col gap-5 hover:scale-105 transition-all">
+      <div className={`w-14 h-14 ${bg} ${color} rounded-2xl flex items-center justify-center shadow-inner`}><Wallet size={24}/></div>
       <div>
-        <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest mb-1">{label}</p>
-        <p className="text-2xl font-black">{value}</p>
+        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">{label}</p>
+        <p className="text-3xl font-black text-slate-900 tracking-tighter italic">{value}</p>
       </div>
     </div>
   )
