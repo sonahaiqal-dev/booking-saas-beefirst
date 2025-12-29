@@ -1,10 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("Waduh! API Key Supabase belum diisi di .env.local");
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Pastikan ada kata 'export' di depan const
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
