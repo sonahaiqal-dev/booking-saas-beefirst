@@ -4,7 +4,7 @@ import { Inter } from 'next/font/google'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
-  title: 'Admin Panel - Beefirst Visual',
+  title: 'Booking Jasa Beefirst Visual',
   // Baris di bawah ini WAJIB ada agar menu muncul di HP
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1', 
 }
