@@ -30,21 +30,28 @@ export default function AdminDashboard() {
   const [newService, setNewService] = useState({ name: '', price: 0 })
 
   // --- LOGIKA AUTENTIKASI (DIPERBAIKI) ---
-  useEffect(() => {
-    // 1. Cek sesi saat ini
+useEffect(() => {
     const getInitialSession = async () => {
       const { data: { session: currentSession } } = await supabase.auth.getSession()
       setSession(currentSession)
       setAuthLoading(false)
-      if (currentSession) fetchData()
+      
+      if (currentSession) {
+        document.title = "Beefirst | Admin Dashboard" // Judul saat sudah login
+        fetchData()
+      } else {
+        document.title = "Beefirst | Admin Login" // Judul saat halaman login
+      }
     }
     getInitialSession()
 
-    // 2. Monitor perubahan auth (Login/Logout) secara otomatis
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       if (session) {
+        document.title = "Beefirst | Admin Dashboard"
         fetchData()
+      } else {
+        document.title = "Beefirst | Admin Login"
       }
     })
 
