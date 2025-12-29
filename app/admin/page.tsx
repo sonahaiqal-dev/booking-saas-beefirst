@@ -56,8 +56,17 @@ export default function AdminDashboard() {
   }
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    window.location.reload()
+    try {
+      await supabase.auth.signOut();
+      // Menghapus semua sisa sesi di local storage agar tidak login otomatis lagi
+      localStorage.clear();
+      sessionStorage.clear();
+      // Gunakan window.location agar browser melakukan refresh total
+      window.location.href = '/login';
+    } catch (error) {
+      console.error("Logout error:", error);
+      window.location.href = '/login';
+    }
   }
 
   // --- LOGIKA DATA ---
@@ -208,10 +217,11 @@ export default function AdminDashboard() {
           
           {/* TOMBOL LOGOUT */}
           <button 
-            onClick={handleLogout}
-            className="mt-10 flex items-center gap-4 p-4 rounded-xl font-black uppercase text-[10px] tracking-widest text-red-500 hover:bg-red-50 transition-all border-t border-slate-100 pt-8"
-          >
-            <LogOut size={18} /> Log Out System
+              onClick={handleLogout}
+              className="mt-auto flex items-center gap-4 p-5 rounded-2xl font-black uppercase text-[10px] tracking-widest text-red-600 hover:bg-red-50 border-t-2 border-slate-100 transition-all w-full mb-4"
+              >
+              <LogOut size={20} strokeWidth={3} />
+              <span>Log Out System</span>
           </button>
         </aside>
       </div>
