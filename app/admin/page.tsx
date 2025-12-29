@@ -71,23 +71,25 @@ export default function AdminDashboard() {
   const handleLogout = async () => {
     try {
       if (confirm("Logout dari sistem Beefirst?")) {
-        // 1. Sign out dari Supabase
+        // 1. Keluar dari sesi Supabase
         await supabase.auth.signOut()
         
-        // 2. Bersihkan sisa sesi di browser secara total
+        // 2. Bersihkan sisa data di browser
         localStorage.clear()
         sessionStorage.clear()
         
-        // 3. Set session state ke null agar UI login muncul
+        // 3. Hapus state session agar UI berubah ke form login
         setSession(null)
         
-        // 4. Arahkan ke rute login menggunakan replace untuk menghindari 404
-        window.location.replace('/login')
+        // 4. BALIK KE ADMIN (Bukan /login) agar tidak 404
+        // Karena form login kamu ada di rute ini
+        window.location.href = '/admin' 
       }
     } catch (error) {
       console.error("Logout error:", error)
-      window.location.replace('/login')
+      window.location.href = '/admin'
     }
+  
   }
 
   // --- LOGIKA DATA ---
