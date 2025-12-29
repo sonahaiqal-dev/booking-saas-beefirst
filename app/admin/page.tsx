@@ -29,15 +29,26 @@ export default function AdminDashboard() {
   const [timeFilter, setTimeFilter] = useState('7')
   const [newService, setNewService] = useState({ name: '', price: 0 })
 
-  // --- LOGIKA AUTENTIKASI ---
+  // --- LOGIKA AUTENTIKASI (DIPERBAIKI) ---
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setSession(session)
+    // 1. Cek sesi saat ini
+    const getInitialSession = async () => {
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      setSession(currentSession)
       setAuthLoading(false)
-      if (session) fetchData()
+      if (currentSession) fetchData()
     }
-    checkUser()
+    getInitialSession()
+
+    // 2. Monitor perubahan auth (Login/Logout) secara otomatis
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+      if (session) {
+        fetchData()
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -47,25 +58,35 @@ export default function AdminDashboard() {
       email: loginEmail,
       password: loginPassword,
     })
+    
     if (error) {
       alert("Gagal Login: " + error.message)
       setAuthLoading(false)
     } else {
-      window.location.reload() // Refresh untuk memicu fetchData
+      // Sesi akan otomatis terupdate oleh onAuthStateChange
+      setAuthLoading(false)
     }
   }
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
-      // Menghapus semua sisa sesi di local storage agar tidak login otomatis lagi
-      localStorage.clear();
-      sessionStorage.clear();
-      // Gunakan window.location agar browser melakukan refresh total
-      window.location.href = '/login';
+      if (confirm("Logout dari sistem Beefirst?")) {
+        // 1. Sign out dari Supabase
+        await supabase.auth.signOut()
+        
+        // 2. Bersihkan sisa sesi di browser secara total
+        localStorage.clear()
+        sessionStorage.clear()
+        
+        // 3. Set session state ke null agar UI login muncul
+        setSession(null)
+        
+        // 4. Arahkan ke rute login menggunakan replace untuk menghindari 404
+        window.location.replace('/login')
+      }
     } catch (error) {
-      console.error("Logout error:", error);
-      window.location.href = '/login';
+      console.error("Logout error:", error)
+      window.location.replace('/login')
     }
   }
 
@@ -169,11 +190,11 @@ export default function AdminDashboard() {
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-1">
             <label className="text-[10px] font-black uppercase tracking-widest ml-1">Email</label>
-            <input required type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold focus:border-slate-900 outline-none transition-all" placeholder="admin@beefirst.com" />
+            <input required type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold focus:border-slate-900 outline-none transition-all text-black" placeholder="admin@beefirst.com" />
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-black uppercase tracking-widest ml-1">Password</label>
-            <input required type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold focus:border-slate-900 outline-none transition-all" placeholder="••••••••" />
+            <input required type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl font-bold focus:border-slate-900 outline-none transition-all text-black" placeholder="••••••••" />
           </div>
           <button type="submit" className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-[0.3em] shadow-2xl hover:brightness-125 active:scale-95 transition-all">
             Enter Dashboard
@@ -295,8 +316,8 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
               <form onSubmit={handleAddService} className="bg-white p-8 rounded-[2.5rem] border-2 border-slate-200 space-y-5 h-fit shadow-xl">
                 <h3 className="font-black text-slate-900 uppercase text-xs tracking-widest mb-4">Layanan Baru</h3>
-                <input value={newService.name} onChange={e => setNewService({...newService, name: e.target.value})} className="w-full border-2 border-slate-200 p-4 rounded-2xl font-black bg-slate-50 text-sm" placeholder="e.g. Foto Katalog" />
-                <input type="number" value={newService.price} onChange={e => setNewService({...newService, price: Number(e.target.value)})} className="w-full border-2 border-slate-200 p-4 rounded-2xl font-black bg-slate-50 text-sm" placeholder="500000" />
+                <input value={newService.name} onChange={e => setNewService({...newService, name: e.target.value})} className="w-full border-2 border-slate-200 p-4 rounded-2xl font-black bg-slate-50 text-sm text-black" placeholder="e.g. Foto Katalog" />
+                <input type="number" value={newService.price} onChange={e => setNewService({...newService, price: Number(e.target.value)})} className="w-full border-2 border-slate-200 p-4 rounded-2xl font-black bg-slate-50 text-sm text-black" placeholder="500000" />
                 <button type="submit" className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg">Simpan Jasa</button>
               </form>
               <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden">
@@ -321,7 +342,7 @@ export default function AdminDashboard() {
           {activeTab === 'settings' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
               <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100 flex flex-col items-center">
-                <h3 className="font-black text-[10px] uppercase tracking-widest mb-6">Logo Branding</h3>
+                <h3 className="font-black text-[10px] uppercase tracking-widest mb-6 text-black">Logo Branding</h3>
                 <div className="w-32 h-32 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden mb-6">
                   {settings.logo_url ? <img src={settings.logo_url} className="w-full h-full object-contain" /> : <ImageIcon className="text-slate-200" size={40} />}
                 </div>
@@ -331,7 +352,7 @@ export default function AdminDashboard() {
                 </label>
               </div>
               <div className="lg:col-span-2">
-                <form onSubmit={handleUpdateSettings} className="bg-white p-8 md:p-12 rounded-[3.5rem] shadow-xl border border-slate-100 space-y-6">
+                <form onSubmit={handleUpdateSettings} className="bg-white p-8 md:p-12 rounded-[3.5rem] shadow-xl border border-slate-100 space-y-6 text-black">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-1">
                       <label className="text-[10px] font-black uppercase tracking-widest ml-1 italic">Nama Bisnis</label>
@@ -376,7 +397,7 @@ function SidebarItem({ active, icon, label, onClick }: any) {
 
 function FilterBtn({ label, active, onClick }: any) {
   return (
-    <button onClick={onClick} className={`px-4 py-2 rounded-xl text-[9px] font-black transition-all ${active ? 'bg-white text-slate-900 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>
+    <button onClick={onClick} className={`px-4 py-2 rounded-xl text-[9px] font-black transition-all ${active ? 'bg-white text-slate-900 shadow-md text-black' : 'text-slate-400 hover:text-slate-600'}`}>
       {label}
     </button>
   )
@@ -384,7 +405,7 @@ function FilterBtn({ label, active, onClick }: any) {
 
 function StatCard({ label, value, color, bg }: any) {
   return (
-    <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-50 flex flex-col gap-5 hover:scale-105 transition-all">
+    <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-50 flex flex-col gap-5 hover:scale-105 transition-all text-black">
       <div className={`w-14 h-14 ${bg} ${color} rounded-2xl flex items-center justify-center shadow-inner`}><Wallet size={24}/></div>
       <div>
         <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">{label}</p>
