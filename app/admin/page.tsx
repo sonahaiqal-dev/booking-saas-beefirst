@@ -73,30 +73,30 @@ export default function AdminDashboard() {
       const fileName = `logo-${Math.random()}.${fileExt}`
       const filePath = `${fileName}`
 
-      // 1. Upload ke Supabase Storage
+      // 1. Upload file
       const { error: uploadError } = await supabase.storage
         .from('logos')
         .upload(filePath, file)
 
       if (uploadError) throw uploadError
 
-      // 2. Ambil URL Publik
+      // 2. AMBIL URL PUBLIK (PASTIKAN INI JALAN)
       const { data } = supabase.storage.from('logos').getPublicUrl(filePath)
       const publicUrl = data.publicUrl
 
-      // 3. OTOMATIS SIMPAN KE DATABASE (Tabel Settings)
+      // 3. SIMPAN KE DATABASE
       const { error: dbError } = await supabase.from('settings')
         .update({ logo_url: publicUrl })
-        .eq('id', 1) // Pastikan ID-nya sesuai dengan baris settings kamu
+        .eq('id', 1)
 
       if (dbError) throw dbError
 
-      // 4. Update tampilan secara realtime
+      // 4. Update tampilan
       setSettings({ ...settings, logo_url: publicUrl })
-      alert("Logo berhasil diperbarui di Admin dan Client!")
+      alert("Logo Berhasil Diperbarui!")
       
     } catch (error: any) {
-      alert("Gagal memperbarui logo: " + error.message)
+      alert("Error: " + error.message)
     } finally {
       setUploading(false)
     }
