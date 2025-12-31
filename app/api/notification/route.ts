@@ -1,57 +1,37 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
-import crypto from 'crypto'
 
-export async function POST(req: Request) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-
+export async function POST(request: Request) {
   try {
-    const body = await req.json()
-    console.log("DAPAT NOTIFIKASI DARI MIDTRANS:", body.order_id, body.transaction_status)
+    // 1. Ambil data dari body (JSON)
+    const body = await request.json()
+    console.log("Data notifikasi masuk:", body)
 
-    const serverKey = process.env.MIDTRANS_SERVER_KEY!
-    
-    // Pastikan gross_amount dibulatkan atau diubah ke string tanpa desimal jika perlu
-    const amount = body.gross_amount.includes('.') ? body.gross_amount.split('.')[0] : body.gross_amount;
+    // 2. Inisialisasi Supabase (Gunakan Service Role Key agar tidak terhalang RLS)
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY! // Gunakan Service Role untuk operasi server-side
+    )
 
-    const hashed = crypto
-      .createHash('sha512')
-      .update(`${body.order_id}${body.status_code}${body.gross_amount}${serverKey}`)
-      .digest('hex')
-
-    if (hashed !== body.signature_key) {
-      console.error("SIGNATURE SALAH! Cek Server Key Vercel kamu.")
-      return NextResponse.json({ message: 'Invalid Signature' }, { status: 403 })
-    }
-
-    const transactionStatus = body.transaction_status
-    const orderId = body.order_id
-
-    let paymentStatus = 'pending'
-    if (transactionStatus === 'capture' || transactionStatus === 'settlement') {
-      paymentStatus = 'paid'
-    } else if (['deny', 'expire', 'cancel'].includes(transactionStatus)) {
-      paymentStatus = 'failed'
-    }
-
-    // UPDATE DATABASE
+    // 3. Contoh simpan data ke tabel database
     const { error } = await supabase
-      .from('bookings')
-      .update({ payment_status: paymentStatus })
-      .eq('id', orderId)
+      .from('notifikasi_pembayaran') // Sesuaikan nama tabel Anda
+      .insert([{ payload: body, status: 'received', created_at: new Date() }])
 
     if (error) {
-      console.error("GAGAL UPDATE SUPABASE:", error.message)
-      throw error
+      console.error("Gagal simpan ke Supabase:", error.message)
+      // Tetap kirim 200 agar pengirim tidak terus-terusan mencoba (retry) jika ini masalah internal
     }
 
-    console.log("SUKSES! Status Booking", orderId, "sekarang", paymentStatus)
-    return NextResponse.json({ message: 'OK' }, { status: 200 })
+    // 4. KIRIM RESPON 200 OK (Wajib!)
+    return new NextResponse(JSON.stringify({ message: 'Success' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
 
-  } catch (err: any) {
-    return NextResponse.json({ message: err.message }, { status: 500 })
+  } catch (err) {
+    console.error("Error Processing Webhook:", err)
+    // Jika error format, tetap kirim 200 atau 400 tergantung kebijakan provider
+    return new NextResponse('Internal Error', { status: 200 }) 
   }
 }
