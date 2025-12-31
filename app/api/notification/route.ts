@@ -2,36 +2,60 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
+  // 1. Inisialisasi Supabase dengan Service Role Key
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY! 
+  )
+
   try {
-    // 1. Ambil data dari body (JSON)
     const body = await request.json()
-    console.log("Data notifikasi masuk:", body)
+    console.log("Notifikasi Midtrans Masuk:", body)
 
-    // 2. Inisialisasi Supabase (Gunakan Service Role Key agar tidak terhalang RLS)
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY! // Gunakan Service Role untuk operasi server-side
-    )
+    // 2. Ambil data penting dari body Midtrans
+    const orderId = body.order_id
+    const transactionStatus = body.transaction_status
+    const fraudStatus = body.fraud_status
 
-    // 3. Contoh simpan data ke tabel database
-    const { error } = await supabase
-      .from('notifikasi_pembayaran') // Sesuaikan nama tabel Anda
-      .insert([{ payload: body, status: 'received', created_at: new Date() }])
+    let finalStatus = 'pending'
 
-    if (error) {
-      console.error("Gagal simpan ke Supabase:", error.message)
-      // Tetap kirim 200 agar pengirim tidak terus-terusan mencoba (retry) jika ini masalah internal
+    // 3. Logika Pemetaan Status Midtrans ke Status Database Anda
+    if (transactionStatus === 'capture') {
+      if (fraudStatus === 'challenge') {
+        finalStatus = 'challenge'
+      } else if (fraudStatus === 'accept') {
+        finalStatus = 'paid'
+      }
+    } else if (transactionStatus === 'settlement') {
+      // INI YANG PALING PENTING: settlement artinya uang sudah diterima/lunas
+      finalStatus = 'paid'
+    } else if (transactionStatus === 'cancel' || transactionStatus === 'deny' || transactionStatus === 'expire') {
+      finalStatus = 'failed'
+    } else if (transactionStatus === 'pending') {
+      finalStatus = 'pending'
     }
 
-    // 4. KIRIM RESPON 200 OK (Wajib!)
-    return new NextResponse(JSON.stringify({ message: 'Success' }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    // 4. Update tabel di Supabase
+    // Ganti 'bookings' dengan nama tabel Anda, dan 'status' dengan nama kolom status Anda
+    const { error } = await supabase
+      .from('bookings') 
+      .update({ 
+        status: finalStatus,
+        payment_method: body.payment_type, // Opsional: simpan cara bayar (gopay/va/dll)
+        updated_at: new Date() 
+      })
+      .eq('order_id', orderId) // Pastikan kolom ini sesuai dengan ID di tabel Anda
+
+    if (error) {
+      console.error("Gagal update ke Supabase:", error.message)
+      return NextResponse.json({ message: "DB Error" }, { status: 500 })
+    }
+
+    // 5. Beri respon 200 ke Midtrans agar mereka berhenti kirim notif
+    return NextResponse.json({ message: 'OK' }, { status: 200 })
 
   } catch (err) {
-    console.error("Error Processing Webhook:", err)
-    // Jika error format, tetap kirim 200 atau 400 tergantung kebijakan provider
-    return new NextResponse('Internal Error', { status: 200 }) 
+    console.error("Webhook Error:", err)
+    return NextResponse.json({ message: "Error" }, { status: 200 })
   }
 }
