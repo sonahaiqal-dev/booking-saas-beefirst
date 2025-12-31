@@ -240,7 +240,7 @@ useEffect(() => {
           </div>
           <nav className="space-y-2 mt-10 lg:mt-0 flex-1">
             <SidebarItem active={activeTab === 'overview'} label="Overview" icon={<LayoutDashboard size={18}/>} onClick={() => {setActiveTab('overview'); setIsMenuOpen(false)}} />
-            <SidebarItem active={activeTab === 'list'} label="Bookings" icon={<CalendarDays size={18}/>} onClick={() => {setActiveTab('list'); setIsMenuOpen(false)}} />
+            <SidebarItem active={activeTab === 'list order'} label="Bookings" icon={<CalendarDays size={18}/>} onClick={() => {setActiveTab('list order'); setIsMenuOpen(false)}} />
             <SidebarItem active={activeTab === 'services'} label="Services" icon={<Plus size={18}/>} onClick={() => {setActiveTab('services'); setIsMenuOpen(false)}} />
             <SidebarItem active={activeTab === 'settings'} label="Settings" icon={<Settings size={18}/>} onClick={() => {setActiveTab('settings'); setIsMenuOpen(false)}} />
           </nav>
@@ -296,7 +296,7 @@ useEffect(() => {
             </div>
           )}
 
-          {activeTab === 'list' && (
+          {activeTab === 'list order' && (
             <div className="bg-white rounded-[2rem] shadow-xl border border-slate-100 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left min-w-[700px]">
