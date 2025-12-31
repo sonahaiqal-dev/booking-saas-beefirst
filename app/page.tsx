@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { Wallet, CalendarDays, ImageIcon } from 'lucide-react' // Tambahkan icon untuk fallback
+import { Wallet, CalendarDays, ImageIcon } from 'lucide-react'
+import Script from 'next/script' // <-- TAMBAHKAN IMPORT INI
 
 declare global {
   interface Window {
@@ -27,22 +28,19 @@ export default function BookingPage() {
 
   useEffect(() => {
     const initData = async () => {
-      // Mengambil data settings termasuk logo_url terbaru
       const { data: sData } = await supabase.from('settings').select('*').single()
-      if (sData) setSiteSettings(sData)
+      if (sData) {
+        setSiteSettings(sData)
+        // Set Nama Tab secara otomatis
+        document.title = `${sData.business_name} | Booking Online`
+      }
       
       const { data: svData } = await supabase.from('services').select('*').order('price', { ascending: true })
       if (svData) setServices(svData)
     }
     initData()
 
-    const checkSnap = setInterval(() => {
-      if (typeof window !== 'undefined' && window.snap) {
-        setIsSnapReady(true)
-        clearInterval(checkSnap)
-      }
-    }, 1000)
-    return () => clearInterval(checkSnap)
+    // LOGIKA INTERVAL LAMA DIHAPUS AGAR TIDAK LEMOT
   }, [])
 
   useEffect(() => {
@@ -111,13 +109,20 @@ export default function BookingPage() {
 
   return (
     <div className="min-h-screen bg-slate-100 py-10 px-5 font-sans">
+      
+      {/* SCRIPT MIDTRANS: Langsung aktif begitu dimuat. 
+          Ganti ke 'app.midtrans.com' jika sudah Production. 
+      */}
+      <Script 
+        src="https://app.sandbox.midtrans.com/snap/snap.js"
+        data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+        onLoad={() => setIsSnapReady(true)}
+      />
+
       <div className="max-w-md mx-auto bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-white">
         
-        {/* --- HEADER DENGAN LOGO DINAMIS --- */}
         <div style={{ backgroundColor: primaryColor }} className="p-12 text-white text-center relative overflow-hidden">
           <div className="relative z-10 flex flex-col items-center">
-            
-            {/* Logo Container: Akan menampilkan logo dari database jika ada */}
             <div className="bg-white p-4 rounded-[2rem] shadow-2xl mb-6 flex items-center justify-center min-w-[90px] min-h-[90px]">
                 {siteSettings?.logo_url ? (
                   <img 
@@ -126,7 +131,6 @@ export default function BookingPage() {
                     className="w-[60px] h-[60px] object-contain"
                   />
                 ) : (
-                  // Fallback jika logo belum diupload
                   <ImageIcon className="text-slate-200" size={40} />
                 )}
             </div>
@@ -172,7 +176,7 @@ export default function BookingPage() {
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Jam</label>
-              <select required className="w-full bg-slate-50 border-2 border-slate-50 p-5 rounded-3xl text-slate-900 outline-none font-bold text-xs" onChange={(e) => setTime(e.target.value)} value={time}>
+              <select required className="w-full bg-slate-50 border-2 border-slate-200 p-5 rounded-3xl text-slate-900 outline-none font-bold text-xs" onChange={(e) => setTime(e.target.value)} value={time}>
                 <option value="">Pilih</option>
                 {availableTimeSlots.map(slot => (
                   <option key={slot} value={slot} disabled={bookedSlots.includes(slot)}>
@@ -190,7 +194,7 @@ export default function BookingPage() {
               style={{ backgroundColor: (!time || loading || !isSnapReady) ? '#f1f5f9' : primaryColor }} 
               className="w-full py-6 rounded-3xl font-black text-white shadow-2xl hover:opacity-90 transition-all active:scale-95 disabled:text-slate-300 uppercase tracking-[0.2em] text-xs"
             >
-              {!isSnapReady ? 'Menyiapkan Bank...' : loading ? 'Processing...' : `Bayar DP Rp ${siteSettings?.dp_amount.toLocaleString()}`}
+              {!isSnapReady ? 'Menghubungkan...' : loading ? 'Processing...' : `Bayar DP Rp ${siteSettings?.dp_amount.toLocaleString()}`}
             </button>
           </div>
         </form>
