@@ -2,60 +2,54 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
-  // 1. Inisialisasi Supabase dengan Service Role Key
+  console.log("--- NOTIFIKASI MASUK ---");
+  
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY! 
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
   try {
-    const body = await request.json()
-    console.log("Notifikasi Midtrans Masuk:", body)
+    const body = await request.json();
+    console.log("Data Midtrans:", JSON.stringify(body, null, 2));
 
-    // 2. Ambil data penting dari body Midtrans
-    const orderId = body.order_id
-    const transactionStatus = body.transaction_status
-    const fraudStatus = body.fraud_status
+    const orderId = body.order_id;
+    const status = body.transaction_status;
+    const amount = body.gross_amount;
 
-    let finalStatus = 'pending'
+    // Pemetaan status
+    let updateStatus = 'pending';
+    if (status === 'settlement' || status === 'capture') updateStatus = 'paid';
+    if (status === 'deny' || status === 'expire' || status === 'cancel') updateStatus = 'failed';
 
-    // 3. Logika Pemetaan Status Midtrans ke Status Database Anda
-    if (transactionStatus === 'capture') {
-      if (fraudStatus === 'challenge') {
-        finalStatus = 'challenge'
-      } else if (fraudStatus === 'accept') {
-        finalStatus = 'paid'
-      }
-    } else if (transactionStatus === 'settlement') {
-      // INI YANG PALING PENTING: settlement artinya uang sudah diterima/lunas
-      finalStatus = 'paid'
-    } else if (transactionStatus === 'cancel' || transactionStatus === 'deny' || transactionStatus === 'expire') {
-      finalStatus = 'failed'
-    } else if (transactionStatus === 'pending') {
-      finalStatus = 'pending'
-    }
+    console.log(`Mengupdate Order: ${orderId} ke Status: ${updateStatus} dengan Amount: ${amount}`);
 
-    // 4. Update tabel di Supabase
-    // Ganti 'bookings' dengan nama tabel Anda, dan 'status' dengan nama kolom status Anda
-    const { error } = await supabase
-      .from('bookings') 
+    // Update ke database
+    const { data, error } = await supabase
+      .from('bookings')
       .update({ 
-        status: finalStatus,
-        payment_method: body.payment_type, // Opsional: simpan cara bayar (gopay/va/dll)
+        status: updateStatus, 
+        amount: parseFloat(amount), // Pastikan ini terisi
         updated_at: new Date() 
       })
-      .eq('order_id', orderId) // Pastikan kolom ini sesuai dengan ID di tabel Anda
+      .eq('order_id', orderId)
+      .select(); // Mengembalikan data yang diupdate untuk dicek di log
 
     if (error) {
-      console.error("Gagal update ke Supabase:", error.message)
-      return NextResponse.json({ message: "DB Error" }, { status: 500 })
+      console.error("DB Update Error:", error.message);
+      // Tetap kirim 200 agar Midtrans tidak terus mencoba, tapi kita tahu ada error di log
+      return NextResponse.json({ error: error.message }, { status: 200 });
     }
 
-    // 5. Beri respon 200 ke Midtrans agar mereka berhenti kirim notif
-    return NextResponse.json({ message: 'OK' }, { status: 200 })
+    if (data && data.length === 0) {
+      console.warn("PERINGATAN: Tidak ada baris yang diupdate. Apakah order_id cocok?");
+    }
+
+    console.log("Berhasil Update Database:", data);
+    return NextResponse.json({ message: 'Success' }, { status: 200 });
 
   } catch (err) {
-    console.error("Webhook Error:", err)
-    return NextResponse.json({ message: "Error" }, { status: 200 })
+    console.error("Crash Error:", err);
+    return NextResponse.json({ message: 'Error Occurred' }, { status: 200 });
   }
 }
