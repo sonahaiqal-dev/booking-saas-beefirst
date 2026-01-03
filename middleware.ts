@@ -4,14 +4,14 @@ import type { NextRequest } from 'next/server'
 export function middleware(request: NextRequest) {
   const url = request.nextUrl.clone()
 
-  // 1. Jika ada orang mencoba akses /admin secara manual
+  // 1. Jika ada yang mencoba akses /admin
   if (url.pathname === '/admin') {
-    // Kita lempar (redirect) mereka ke halaman beranda atau 404
-    return NextResponse.redirect(new URL('/', request.url))
+    // Kita "samarkan" dengan menulis ulang tujuan ke path yang tidak ada
+    // Ini akan memicu halaman 404 (Not Found) secara otomatis
+    return NextResponse.rewrite(new URL('/404-not-found-page', request.url))
   }
 
-  // 2. Pastikan webhook Midtrans TETAP bisa lewat (PENTING!)
-  // Jangan sampai middleware memblokir notifikasi pembayaran
+  // 2. Biarkan Webhook Midtrans tetap lewat (JANGAN DI-REWRITE)
   if (url.pathname.startsWith('/api/notification')) {
     return NextResponse.next()
   }
@@ -19,7 +19,6 @@ export function middleware(request: NextRequest) {
   return NextResponse.next()
 }
 
-// Hanya jalankan middleware ini pada path tertentu untuk performa
 export const config = {
   matcher: ['/admin', '/api/notification/:path*'],
 }
