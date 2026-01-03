@@ -103,7 +103,7 @@ export default function BookingPage() {
     }
   }
 
-  if (!siteSettings) return <div className="h-screen flex items-center justify-center font-bold text-slate-400">Loading Photography Beefirst...</div>
+  if (!siteSettings) return <div className="h-screen flex items-center justify-center font-bold text-slate-400">Loading Beefirst Visual...</div>
 
   const primaryColor = siteSettings?.primary_color || '#000000'
 
@@ -136,7 +136,7 @@ export default function BookingPage() {
             </div>
 
             <h1 className="text-2xl font-black tracking-tighter mb-2 uppercase italic">{siteSettings?.business_name}</h1>
-            <p className="text-[10px] font-black opacity-60 tracking-[0.3em] uppercase">Professional Booking System</p>
+            <p className="text-[10px] font-black opacity-60 tracking-[0.3em] uppercase">Your Visual Storyteller</p>
           </div>
           <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/5 rounded-full"></div>
         </div>
