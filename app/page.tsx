@@ -153,7 +153,7 @@ export default function BookingPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Pilih Layanan</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Pilih Layanan (DP Reservasi Jasa)</label>
             <div className="grid grid-cols-1 gap-3">
               {services.map(s => (
                 <button 
