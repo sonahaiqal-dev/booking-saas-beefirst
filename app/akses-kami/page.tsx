@@ -332,7 +332,7 @@ useEffect(() => {
               <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden">
                 <table className="w-full text-left">
                   <thead className="bg-slate-100 border-b-2 border-slate-200 font-black text-slate-900 text-[10px] uppercase tracking-widest">
-                    <tr><th className="p-6">Nama Jasa</th><th className="p-6 text-right">Harga</th><th className="p-6 text-center">Hapus</th></tr>
+                    <tr><th className="p-6">Nama Jasa</th><th className="p-6 text-right">DP Reservasi Jasa</th><th className="p-6 text-center">Hapus</th></tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-black text-slate-900 uppercase text-xs">
                     {services.map(s => (
