@@ -29,18 +29,18 @@ export default function AdminDashboard() {
   const [timeFilter, setTimeFilter] = useState('7')
   const [newService, setNewService] = useState({ name: '', price: 0 })
 
-  // --- LOGIKA AUTENTIKASI (DIPERBAIKI) ---
-useEffect(() => {
+  // --- LOGIKA AUTENTIKASI ---
+  useEffect(() => {
     const getInitialSession = async () => {
       const { data: { session: currentSession } } = await supabase.auth.getSession()
       setSession(currentSession)
       setAuthLoading(false)
       
       if (currentSession) {
-        document.title = "Beefirst | Admin Dashboard" // Judul saat sudah login
+        document.title = "Beefirst | Admin Dashboard"
         fetchData()
       } else {
-        document.title = "Beefirst | Admin Login" // Judul saat halaman login
+        document.title = "Beefirst | Admin Login"
       }
     }
     getInitialSession()
@@ -70,7 +70,6 @@ useEffect(() => {
       alert("Gagal Login: " + error.message)
       setAuthLoading(false)
     } else {
-      // Sesi akan otomatis terupdate oleh onAuthStateChange
       setAuthLoading(false)
     }
   }
@@ -78,25 +77,16 @@ useEffect(() => {
   const handleLogout = async () => {
     try {
       if (confirm("Logout dari sistem Beefirst?")) {
-        // 1. Keluar dari sesi Supabase
         await supabase.auth.signOut()
-        
-        // 2. Bersihkan sisa data di browser
         localStorage.clear()
         sessionStorage.clear()
-        
-        // 3. Hapus state session agar UI berubah ke form login
         setSession(null)
-        
-        // 4. BALIK KE ADMIN (Bukan /login) agar tidak 404
-        // Karena form login kamu ada di rute ini
         window.location.href = '/admin' 
       }
     } catch (error) {
       console.error("Logout error:", error)
       window.location.href = '/admin'
     }
-  
   }
 
   // --- LOGIKA DATA ---
@@ -115,7 +105,7 @@ useEffect(() => {
 
   const handleAddService = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newService.name || newService.price <= 0) return alert("Isi data layanan dengan benar!")
+    if (!newService.name || newService.price < 0) return alert("Isi data layanan dengan benar!")
     const { error } = await supabase.from('services').insert([newService])
     if (!error) { 
         fetchData(); 
@@ -156,8 +146,10 @@ useEffect(() => {
 
   const handleUpdateSettings = async (e: React.FormEvent) => {
     e.preventDefault()
+    // Update mencakup kolom is_dp_enabled juga karena ada di object settings
     const { error } = await supabase.from('settings').update(settings).eq('id', 1)
     if (!error) alert("Sistem Beefirst Visual Berhasil Diupdate!")
+    else alert("Gagal update: " + error.message)
   }
 
   const getFilteredChartData = () => {
@@ -245,7 +237,6 @@ useEffect(() => {
             <SidebarItem active={activeTab === 'settings'} label="Settings" icon={<Settings size={18}/>} onClick={() => {setActiveTab('settings'); setIsMenuOpen(false)}} />
           </nav>
           
-          {/* TOMBOL LOGOUT */}
           <button 
               onClick={handleLogout}
               className="mt-auto flex items-center gap-4 p-5 rounded-2xl font-black uppercase text-[10px] tracking-widest text-red-600 hover:bg-red-50 border-t-2 border-slate-100 transition-all w-full mb-4"
@@ -332,7 +323,7 @@ useEffect(() => {
               <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden">
                 <table className="w-full text-left">
                   <thead className="bg-slate-100 border-b-2 border-slate-200 font-black text-slate-900 text-[10px] uppercase tracking-widest">
-                    <tr><th className="p-6">Nama Jasa</th><th className="p-6 text-right">DP Reservasi Jasa</th><th className="p-6 text-center">Hapus</th></tr>
+                    <tr><th className="p-6">Nama Jasa</th><th className="p-6 text-right">Harga Layanan</th><th className="p-6 text-center">Hapus</th></tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-black text-slate-900 uppercase text-xs">
                     {services.map(s => (
@@ -350,6 +341,7 @@ useEffect(() => {
 
           {activeTab === 'settings' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+              {/* UPLOAD LOGO */}
               <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100 flex flex-col items-center">
                 <h3 className="font-black text-[10px] uppercase tracking-widest mb-6 text-black">Logo Branding</h3>
                 <div className="w-32 h-32 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden mb-6">
@@ -360,6 +352,8 @@ useEffect(() => {
                   <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} disabled={uploading} />
                 </label>
               </div>
+
+              {/* FORM PENGATURAN */}
               <div className="lg:col-span-2">
                 <form onSubmit={handleUpdateSettings} className="bg-white p-8 md:p-12 rounded-[3.5rem] shadow-xl border border-slate-100 space-y-6 text-black">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -378,9 +372,34 @@ useEffect(() => {
                         <span className="text-slate-900 font-black uppercase font-mono text-xs italic">{settings.primary_color}</span>
                       </div>
                     </div>
+
+                    {/* --- TOGGLE SISTEM DP (BARU) --- */}
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black uppercase tracking-widest ml-1 italic">Besar DP (Rp)</label>
-                      <input type="number" value={settings.dp_amount} onChange={e => setSettings({...settings, dp_amount: Number(e.target.value)})} className="w-full border-2 border-slate-200 p-5 rounded-3xl font-black text-slate-900 bg-white shadow-sm" />
+                      <label className="text-[10px] font-black uppercase tracking-widest ml-1 italic">Sistem Down Payment (DP)</label>
+                      <button
+                        type="button"
+                        onClick={() => setSettings({ ...settings, is_dp_enabled: !settings.is_dp_enabled })}
+                        className={`w-full p-5 rounded-3xl font-black text-xs uppercase tracking-widest transition-all border-2 flex items-center justify-between px-6 ${
+                          settings.is_dp_enabled
+                            ? 'bg-slate-900 text-white border-slate-900 shadow-lg'
+                            : 'bg-slate-50 text-slate-400 border-slate-200'
+                        }`}
+                      >
+                        <span>{settings.is_dp_enabled ? 'Sistem DP Aktif' : 'Sistem DP Nonaktif'}</span>
+                        <div className={`w-3 h-3 rounded-full ${settings.is_dp_enabled ? 'bg-green-400 animate-pulse' : 'bg-slate-300'}`}></div>
+                      </button>
+                    </div>
+
+                    {/* INPUT DP - Hanya aktif jika DP Enabled */}
+                    <div className={`space-y-1 transition-all duration-300 ${!settings.is_dp_enabled ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
+                      <label className="text-[10px] font-black uppercase tracking-widest ml-1 italic">Nominal DP (Rp)</label>
+                      <input 
+                        type="number" 
+                        value={settings.dp_amount} 
+                        onChange={e => setSettings({...settings, dp_amount: Number(e.target.value)})} 
+                        className="w-full border-2 border-slate-200 p-5 rounded-3xl font-black text-slate-900 bg-white shadow-sm" 
+                        disabled={!settings.is_dp_enabled}
+                      />
                     </div>
                   </div>
                   <button type="submit" style={{backgroundColor: settings.primary_color}} className="w-full py-6 rounded-3xl font-black text-white text-xs uppercase tracking-[0.4em] shadow-2xl active:scale-95 transition-all">Update Pengaturan</button>
