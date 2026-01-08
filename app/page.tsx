@@ -5,8 +5,8 @@ import { supabase } from '../lib/supabase'
 import { 
   Wallet, CalendarDays, ImageIcon, 
   Scissors, Utensils, BedDouble, GraduationCap, 
-  ArrowRight, ExternalLink 
-} from 'lucide-react' // <-- UPDATE IMPORT INI (Tambah icon baru)
+  ArrowRight, CheckCircle2, MapPin, Clock
+} from 'lucide-react' 
 import Script from 'next/script'
 
 declare global {
@@ -16,6 +16,7 @@ declare global {
 }
 
 export default function BookingPage() {
+  // --- STATE & LOGIC (TIDAK BERUBAH) ---
   const [siteSettings, setSiteSettings] = useState<any>(null)
   const [services, setServices] = useState<any[]>([])
   const [bookedSlots, setBookings] = useState<string[]>([])
@@ -104,189 +105,225 @@ export default function BookingPage() {
     }
   }
 
-  // Loading state yang lebih cantik dikit
+  // --- UI RENDER ---
+
   if (!siteSettings) return (
-    <div className="h-screen flex flex-col items-center justify-center space-y-4 bg-slate-50">
-      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-slate-800"></div>
-      <div className="font-bold text-slate-400 animate-pulse">Memuat Beefirst Visual...</div>
+    <div className="h-screen flex flex-col items-center justify-center space-y-4 bg-gray-50">
+      <div className="w-16 h-16 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
     </div>
   )
 
-  const primaryColor = siteSettings?.primary_color || '#000000'
+  const primaryColor = siteSettings?.primary_color || '#1e293b'
 
   return (
-    <div className="min-h-screen bg-slate-100 font-sans">
+    <div className="min-h-screen font-sans text-slate-800 selection:bg-slate-200 selection:text-slate-900">
       <Script 
         src="https://app.sandbox.midtrans.com/snap/snap.js"
         data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
         onLoad={() => setIsSnapReady(true)}
       />
 
-      {/* --- SECTION INTRO & SHOWCASE (BARU) --- */}
-      <div className="bg-white pb-16 pt-10 px-5 rounded-b-[3rem] shadow-sm mb-10 border-b border-slate-100">
-        <div className="max-w-3xl mx-auto text-center space-y-6">
-          
-          {/* Headline Copywriting */}
-          <div className="space-y-2">
-            <span className="inline-block px-4 py-1.5 rounded-full bg-yellow-100 text-yellow-700 text-[10px] font-black tracking-widest uppercase mb-2">
-              🚀 Upgrade Bisnismu Sekarang
-            </span>
-            <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-tight">
-              Punya Bisnis Tapi Belum Punya <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-500">Landing Page?</span>
-            </h2>
-            <p className="text-slate-500 text-sm md:text-base max-w-lg mx-auto leading-relaxed font-medium">
-              Jangan biarkan pelanggan kabur karena sistemmu ribet. <span className="text-slate-900 font-bold">Beefirst Visual</span> siap menyulap bisnismu jadi lebih profesional, otomatis, dan berkelas.
-            </p>
-          </div>
-
-          {/* Grid Tombol Contoh (Demo) */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4">
-            {/* 1. Salon */}
-            <a 
-              href="#" /* ISI LINK LANDING PAGE SALON DISINI */
-              target="_blank"
-              className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 hover:bg-pink-50 hover:border-pink-200 border border-slate-100 transition-all hover:-translate-y-1"
-            >
-              <div className="bg-white p-3 rounded-xl shadow-sm mb-3 group-hover:scale-110 transition-transform">
-                <Scissors size={20} className="text-pink-500" />
-              </div>
-              <span className="text-xs font-black text-slate-600 uppercase tracking-wide group-hover:text-pink-600">Salon & Spa</span>
-            </a>
-
-            {/* 2. Resto */}
-            <a 
-              href="#" /* ISI LINK LANDING PAGE RESTO DISINI */
-              target="_blank"
-              className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 hover:bg-orange-50 hover:border-orange-200 border border-slate-100 transition-all hover:-translate-y-1"
-            >
-              <div className="bg-white p-3 rounded-xl shadow-sm mb-3 group-hover:scale-110 transition-transform">
-                <Utensils size={20} className="text-orange-500" />
-              </div>
-              <span className="text-xs font-black text-slate-600 uppercase tracking-wide group-hover:text-orange-600">Resto & Cafe</span>
-            </a>
-
-            {/* 3. Guest House */}
-            <a 
-              href="#" /* ISI LINK GUEST HOUSE DISINI */
-              target="_blank"
-              className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 hover:bg-blue-50 hover:border-blue-200 border border-slate-100 transition-all hover:-translate-y-1"
-            >
-              <div className="bg-white p-3 rounded-xl shadow-sm mb-3 group-hover:scale-110 transition-transform">
-                <BedDouble size={20} className="text-blue-500" />
-              </div>
-              <span className="text-xs font-black text-slate-600 uppercase tracking-wide group-hover:text-blue-600">Guest House</span>
-            </a>
-
-            {/* 4. Bimbel */}
-            <a 
-              href="#" /* ISI LINK BIMBEL DISINI */
-              target="_blank"
-              className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 hover:bg-emerald-50 hover:border-emerald-200 border border-slate-100 transition-all hover:-translate-y-1"
-            >
-              <div className="bg-white p-3 rounded-xl shadow-sm mb-3 group-hover:scale-110 transition-transform">
-                <GraduationCap size={20} className="text-emerald-500" />
-              </div>
-              <span className="text-xs font-black text-slate-600 uppercase tracking-wide group-hover:text-emerald-600">Bimbel / Kursus</span>
-            </a>
-          </div>
-
-          <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
-            <span>Scroll ke bawah untuk coba sistem booking</span>
-            <ArrowRight size={12} className="animate-bounce mt-1" />
-          </div>
-        </div>
+      {/* BACKGROUND GRADIENT HALUS */}
+      <div className="fixed inset-0 z-0 bg-[#F8FAFC]">
+        <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-white to-transparent opacity-80"></div>
+        <div className="absolute top-[-100px] right-[-100px] w-[400px] h-[400px] bg-blue-50 rounded-full blur-3xl opacity-50"></div>
+        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-slate-100 rounded-full blur-3xl opacity-50"></div>
       </div>
 
-
-      {/* --- FORM BOOKING ORIGINAL --- */}
-      <div className="max-w-md mx-auto px-5 pb-20"> {/* Tambah padding bottom */}
-        <div className="bg-white rounded-[3rem] shadow-xl overflow-hidden border border-white relative z-10">
-          
-          <div style={{ backgroundColor: primaryColor }} className="p-12 text-white text-center relative overflow-hidden">
-            <div className="relative z-10 flex flex-col items-center">
-              <div className="bg-white p-4 rounded-[2rem] shadow-2xl mb-6 flex items-center justify-center min-w-[90px] min-h-[90px]">
-                  {siteSettings?.logo_url ? (
-                    <img 
-                      src={siteSettings.logo_url} 
-                      alt="Logo Beefirst" 
-                      className="w-[60px] h-[60px] object-contain"
-                    />
-                  ) : (
-                    <ImageIcon className="text-slate-200" size={40} />
-                  )}
-              </div>
-
-              <h1 className="text-2xl font-black tracking-tighter mb-2 uppercase italic">{siteSettings?.business_name}</h1>
-              <p className="text-[10px] font-black opacity-60 tracking-[0.3em] uppercase">Your Visual Storyteller</p>
-            </div>
-            {/* Hiasan background abstrak */}
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
-            <div className="absolute top-20 -left-10 w-20 h-20 bg-white/10 rounded-full blur-xl"></div>
-          </div>
-
-          <form onSubmit={handleBooking} className="p-10 space-y-6">
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nama Lengkap</label>
-              <input required className="w-full bg-slate-50 border-2 border-slate-50 p-5 rounded-3xl text-slate-900 focus:bg-white focus:border-slate-200 outline-none transition-all font-bold" placeholder="Nama Anda" onChange={(e) => setName(e.target.value)} />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nomor WhatsApp</label>
-              <input required type="tel" className="w-full bg-slate-50 border-2 border-slate-50 p-5 rounded-3xl text-slate-900 focus:bg-white focus:border-slate-200 outline-none transition-all font-bold" placeholder="08..." onChange={(e) => setWhatsapp(e.target.value)} />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Pilih Layanan (DP Reservasi Jasa)</label>
-              <div className="grid grid-cols-1 gap-3">
-                {services.map(s => (
-                  <button 
-                    key={s.id} 
-                    type="button" 
-                    onClick={() => setSelectedService(s)} 
-                    className={`flex justify-between items-center p-5 rounded-3xl border-2 transition-all shadow-sm ${selectedService?.id === s.id ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-50 bg-slate-50 text-slate-600'}`}
-                  >
-                    <span className="text-sm font-black uppercase italic">{s.name}</span>
-                    <span className="text-[10px] font-mono font-black opacity-60 italic">Rp {s.price.toLocaleString()}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tanggal</label>
-                <input type="date" required className="w-full bg-slate-50 border-2 border-slate-50 p-5 rounded-3xl text-slate-900 outline-none font-bold text-xs" onChange={(e) => setDate(e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Jam</label>
-                <select required className="w-full bg-slate-50 border-2 border-slate-200 p-5 rounded-3xl text-slate-900 outline-none font-bold text-xs" onChange={(e) => setTime(e.target.value)} value={time}>
-                  <option value="">Pilih</option>
-                  {availableTimeSlots.map(slot => (
-                    <option key={slot} value={slot} disabled={bookedSlots.includes(slot)}>
-                      {slot} {bookedSlots.includes(slot) ? '(Penuh)' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="pt-6">
-              <button 
-                type="submit" 
-                disabled={loading || !time || !isSnapReady} 
-                style={{ backgroundColor: (!time || loading || !isSnapReady) ? '#f1f5f9' : primaryColor }} 
-                className="w-full py-6 rounded-3xl font-black text-white shadow-2xl hover:opacity-90 transition-all active:scale-95 disabled:text-slate-300 uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-2"
-              >
-                 {loading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <Wallet size={16} />}
-                {!isSnapReady ? 'Menghubungkan...' : loading ? 'Processing...' : `Bayar DP Rp ${siteSettings?.dp_amount.toLocaleString()}`}
-              </button>
-            </div>
-          </form>
-        </div>
+      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         
-        {/* Footer Kecil */}
-        <div className="text-center mt-10 opacity-40 hover:opacity-100 transition-opacity">
-           <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Powered by Beefirst Visual</p>
+        {/* --- SECTION SHOWCASE (ELEGANT VERSION) --- */}
+        <div className="mb-12 text-center space-y-8">
+           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white shadow-sm border border-slate-100 mb-4">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+              <span className="text-[10px] font-bold tracking-widest uppercase text-slate-500">Beefirst Visual SaaS</span>
+           </div>
+
+           <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">
+             Bisnis Profesional <br/>
+             <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-700 to-slate-400">Butuh Sistem Digital</span>
+           </h1>
+           
+           <p className="text-slate-500 max-w-xl mx-auto leading-relaxed">
+             Lihat bagaimana <strong>Beefirst</strong> mengubah cara bisnis Anda menerima pesanan. 
+             Pilih demo di bawah ini:
+           </p>
+
+           {/* GRID DEMO CARDS */}
+           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
+              {[
+                { icon: Scissors, label: "Salon & Spa", color: "text-pink-500", bg: "hover:bg-pink-50", link: "#" },
+                { icon: Utensils, label: "Resto & Cafe", color: "text-orange-500", bg: "hover:bg-orange-50", link: "#" },
+                { icon: BedDouble, label: "Guest House", color: "text-blue-500", bg: "hover:bg-blue-50", link: "#" },
+                { icon: GraduationCap, label: "Education", color: "text-emerald-500", bg: "hover:bg-emerald-50", link: "#" }
+              ].map((item, idx) => (
+                <a 
+                  key={idx}
+                  href={item.link}
+                  target="_blank"
+                  className={`group relative flex flex-col items-center p-6 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 ${item.bg}`}
+                >
+                  <div className={`p-3 rounded-full bg-slate-50 mb-3 group-hover:scale-110 transition-transform ${item.color}`}>
+                    <item.icon size={24} />
+                  </div>
+                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">{item.label}</span>
+                  <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ArrowRight size={14} className="text-slate-400" />
+                  </div>
+                </a>
+              ))}
+           </div>
+        </div>
+
+        {/* --- BOOKING FORM (ELEGANT CARD) --- */}
+        <div className="max-w-lg mx-auto">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-white overflow-hidden relative">
+            
+            {/* Header with Glass Effect */}
+            <div style={{ backgroundColor: primaryColor }} className="relative px-8 pt-12 pb-10 text-white overflow-hidden">
+               <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-transparent"></div>
+               {/* Decorative Circles */}
+               <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+               <div className="absolute top-20 -left-10 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+
+               <div className="relative z-10 flex flex-col items-center text-center">
+                  <div className="bg-white p-1 rounded-2xl shadow-lg mb-5 rotate-3 hover:rotate-0 transition-transform duration-500">
+                    <div className="bg-white rounded-xl overflow-hidden w-[80px] h-[80px] flex items-center justify-center border border-slate-100">
+                      {siteSettings?.logo_url ? (
+                        <img src={siteSettings.logo_url} alt="Logo" className="w-14 h-14 object-contain"/>
+                      ) : (
+                        <ImageIcon className="text-slate-300" size={32} />
+                      )}
+                    </div>
+                  </div>
+                  <h2 className="text-xl font-bold tracking-tight mb-1">{siteSettings?.business_name}</h2>
+                  <p className="text-[10px] uppercase tracking-[0.2em] opacity-80 font-medium">Official Booking Page</p>
+               </div>
+            </div>
+
+            <form onSubmit={handleBooking} className="p-8 space-y-8">
+              
+              {/* Personal Info */}
+              <div className="space-y-4">
+                <div className="group">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Nama Lengkap</label>
+                  <input 
+                    required 
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full bg-slate-50/50 hover:bg-white focus:bg-white border border-slate-200 focus:border-slate-400 rounded-2xl px-5 py-4 text-sm font-bold text-slate-800 outline-none transition-all placeholder:text-slate-300 shadow-sm"
+                    placeholder="Contoh: Budi Santoso" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">WhatsApp</label>
+                  <input 
+                    required 
+                    type="tel"
+                    onChange={(e) => setWhatsapp(e.target.value)}
+                    className="w-full bg-slate-50/50 hover:bg-white focus:bg-white border border-slate-200 focus:border-slate-400 rounded-2xl px-5 py-4 text-sm font-bold text-slate-800 outline-none transition-all placeholder:text-slate-300 shadow-sm"
+                    placeholder="Contoh: 0812..." 
+                  />
+                </div>
+              </div>
+
+              {/* Service Selection - Card Style */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 ml-1">Pilih Layanan</label>
+                <div className="space-y-3">
+                  {services.map(s => {
+                    const isSelected = selectedService?.id === s.id;
+                    return (
+                      <button 
+                        key={s.id} 
+                        type="button" 
+                        onClick={() => setSelectedService(s)} 
+                        className={`w-full flex justify-between items-center p-4 rounded-2xl border transition-all duration-200 group ${isSelected ? 'border-slate-800 bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'border-slate-100 bg-white text-slate-600 hover:border-slate-300'}`}
+                      >
+                        <div className="flex items-center gap-3 text-left">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isSelected ? 'bg-white/20' : 'bg-slate-100 group-hover:bg-slate-200'}`}>
+                            {isSelected ? <CheckCircle2 size={16} /> : <div className="w-2 h-2 rounded-full bg-slate-300" />}
+                          </div>
+                          <span className="text-sm font-bold">{s.name}</span>
+                        </div>
+                        <span className={`text-xs font-mono font-medium ${isSelected ? 'text-slate-200' : 'text-slate-400'}`}>
+                          Rp {s.price.toLocaleString()}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Date & Time Grid */}
+              <div className="grid grid-cols-2 gap-5">
+                <div>
+                  <label className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                    <CalendarDays size={10} /> Tanggal
+                  </label>
+                  <input 
+                    type="date" 
+                    required 
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-4 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-slate-100 shadow-sm" 
+                  />
+                </div>
+                <div>
+                  <label className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                    <Clock size={10} /> Jam
+                  </label>
+                  <div className="relative">
+                    <select 
+                      required 
+                      onChange={(e) => setTime(e.target.value)} 
+                      value={time}
+                      className="w-full appearance-none bg-white border border-slate-200 rounded-2xl px-4 py-4 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-slate-100 shadow-sm"
+                    >
+                      <option value="">--:--</option>
+                      {availableTimeSlots.map(slot => (
+                        <option key={slot} value={slot} disabled={bookedSlots.includes(slot)}>
+                          {slot} {bookedSlots.includes(slot) ? '(Penuh)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                      <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div className="pt-4">
+                <button 
+                  type="submit" 
+                  disabled={loading || !time || !isSnapReady} 
+                  style={{ backgroundColor: (!time || loading || !isSnapReady) ? '#F1F5F9' : primaryColor }} 
+                  className={`
+                    w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl transition-all duration-300
+                    flex items-center justify-center gap-3
+                    ${(!time || loading || !isSnapReady) ? 'text-slate-300 cursor-not-allowed shadow-none' : 'text-white hover:shadow-2xl hover:-translate-y-1 active:scale-95'}
+                  `}
+                >
+                  {loading ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Wallet size={16} />
+                      <span>Bayar DP Rp {siteSettings?.dp_amount.toLocaleString()}</span>
+                    </>
+                  )}
+                </button>
+                <p className="text-center mt-6 text-[10px] text-slate-400 font-medium">
+                  Pembayaran aman didukung oleh Midtrans
+                </p>
+              </div>
+
+            </form>
+          </div>
+          
+          <div className="text-center mt-12 mb-8">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">Powered by Beefirst Visual</p>
+          </div>
         </div>
       </div>
     </div>
