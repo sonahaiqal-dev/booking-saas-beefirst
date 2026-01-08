@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { 
   Wallet, CalendarDays, ImageIcon, 
   Scissors, Utensils, BedDouble, GraduationCap, 
-  ArrowRight, CheckCircle2, MapPin, Clock
+  ArrowRight, CheckCircle2, MapPin, Clock, Send
 } from 'lucide-react' 
 import Script from 'next/script'
 
@@ -16,7 +16,6 @@ declare global {
 }
 
 export default function BookingPage() {
-  // --- STATE & LOGIC (TIDAK BERUBAH) ---
   const [siteSettings, setSiteSettings] = useState<any>(null)
   const [services, setServices] = useState<any[]>([])
   const [bookedSlots, setBookings] = useState<string[]>([])
@@ -33,6 +32,7 @@ export default function BookingPage() {
 
   useEffect(() => {
     const initData = async () => {
+      // Ambil data settings (termasuk is_dp_enabled)
       const { data: sData } = await supabase.from('settings').select('*').single()
       if (sData) {
         setSiteSettings(sData)
@@ -57,14 +57,21 @@ export default function BookingPage() {
 
   const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isSnapReady) return alert("Sistem pembayaran sedang menyiapkan koneksi.")
     
+    // Validasi input
     if (!name || !whatsapp || !date || !time || !selectedService) {
       return alert("Mohon lengkapi semua data!")
     }
 
+    // Cek kesiapan Snap HANYA JIKA DP diaktifkan
+    if (siteSettings?.is_dp_enabled && !isSnapReady) {
+       return alert("Sistem pembayaran sedang menyiapkan koneksi. Tunggu sebentar...")
+    }
+
     setLoading(true)
+
     try {
+      // 1. Simpan ke Database dulu (Status Pending)
       const { data: booking, error: dbError } = await supabase
         .from('bookings')
         .insert([{ 
@@ -73,31 +80,44 @@ export default function BookingPage() {
           service_name: selectedService.name,
           booking_date: date, 
           booking_time: time,
-          payment_status: 'pending'
+          payment_status: siteSettings?.is_dp_enabled ? 'pending' : 'confirmed' // Jika tanpa DP, langsung confirm
         }])
         .select().single()
 
       if (dbError) throw dbError
 
-      const response = await fetch('/api/tokenizer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: booking.id, name: name, price: siteSettings?.dp_amount || 0 })
-      })
+      // --- PERCABANGAN LOGIKA ---
       
-      const resData = await response.json()
+      if (siteSettings?.is_dp_enabled) {
+        // A. JIKA SISTEM DP AKTIF -> KE MIDTRANS
+        const response = await fetch('/api/tokenizer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: booking.id, name: name, price: siteSettings?.dp_amount || 0 })
+        })
+        
+        const resData = await response.json()
 
-      window.snap.pay(resData.token, {
-        onSuccess: () => {
-          alert("Pembayaran Berhasil!")
-          const msg = `Halo, saya ${name} sudah bayar DP untuk ${selectedService.name} tanggal ${date} jam ${time}.`
-          window.open(`https://wa.me/${siteSettings?.whatsapp_admin}?text=${encodeURIComponent(msg)}`, '_blank')
-          window.location.reload()
-        },
-        onPending: () => alert("Menunggu pembayaran..."),
-        onError: () => alert("Pembayaran gagal!"),
-        onClose: () => alert("Jendela pembayaran ditutup.")
-      })
+        window.snap.pay(resData.token, {
+          onSuccess: () => {
+            alert("Pembayaran Berhasil!")
+            const msg = `Halo Admin, saya ${name} sudah bayar DP untuk layanan ${selectedService.name} pada tanggal ${date} jam ${time}.`
+            window.open(`https://wa.me/${siteSettings?.whatsapp_admin}?text=${encodeURIComponent(msg)}`, '_blank')
+            window.location.reload()
+          },
+          onPending: () => alert("Menunggu pembayaran..."),
+          onError: () => alert("Pembayaran gagal!"),
+          onClose: () => alert("Jendela pembayaran ditutup.")
+        })
+
+      } else {
+        // B. JIKA SISTEM DP MATI -> LANGSUNG WHATSAPP
+        alert("Booking Berhasil Terkirim!")
+        const msg = `Halo Admin, saya ${name} ingin booking layanan ${selectedService.name} pada tanggal ${date} jam ${time}. Mohon konfirmasinya.`
+        window.open(`https://wa.me/${siteSettings?.whatsapp_admin}?text=${encodeURIComponent(msg)}`, '_blank')
+        window.location.reload()
+      }
+
     } catch (err: any) {
       alert("Kesalahan: " + err.message)
     } finally {
@@ -114,9 +134,12 @@ export default function BookingPage() {
   )
 
   const primaryColor = siteSettings?.primary_color || '#1e293b'
+  const isDpEnabled = siteSettings?.is_dp_enabled; // Helper variable
 
   return (
     <div className="min-h-screen font-sans text-slate-800 selection:bg-slate-200 selection:text-slate-900">
+      
+      {/* Script Midtrans hanya perlu diload, tidak masalah ada walaupun tidak dipakai */}
       <Script 
         src="https://app.sandbox.midtrans.com/snap/snap.js"
         data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
@@ -132,7 +155,7 @@ export default function BookingPage() {
 
       <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         
-        {/* --- SECTION SHOWCASE (ELEGANT VERSION) --- */}
+        {/* --- SECTION SHOWCASE --- */}
         <div className="mb-12 text-center space-y-8">
            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white shadow-sm border border-slate-100 mb-4">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
@@ -149,7 +172,6 @@ export default function BookingPage() {
              Pilih demo di bawah ini:
            </p>
 
-           {/* GRID DEMO CARDS */}
            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
               {[
                 { icon: Scissors, label: "Salon & Spa", color: "text-pink-500", bg: "hover:bg-pink-50", link: "#" },
@@ -175,14 +197,12 @@ export default function BookingPage() {
            </div>
         </div>
 
-        {/* --- BOOKING FORM (ELEGANT CARD) --- */}
+        {/* --- BOOKING FORM --- */}
         <div className="max-w-lg mx-auto">
           <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-white overflow-hidden relative">
             
-            {/* Header with Glass Effect */}
             <div style={{ backgroundColor: primaryColor }} className="relative px-8 pt-12 pb-10 text-white overflow-hidden">
                <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-transparent"></div>
-               {/* Decorative Circles */}
                <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
                <div className="absolute top-20 -left-10 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
 
@@ -203,7 +223,6 @@ export default function BookingPage() {
 
             <form onSubmit={handleBooking} className="p-8 space-y-8">
               
-              {/* Personal Info */}
               <div className="space-y-4">
                 <div className="group">
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Nama Lengkap</label>
@@ -226,7 +245,6 @@ export default function BookingPage() {
                 </div>
               </div>
 
-              {/* Service Selection - Card Style */}
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 ml-1">Pilih Layanan</label>
                 <div className="space-y-3">
@@ -254,7 +272,6 @@ export default function BookingPage() {
                 </div>
               </div>
 
-              {/* Date & Time Grid */}
               <div className="grid grid-cols-2 gap-5">
                 <div>
                   <label className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
@@ -292,29 +309,40 @@ export default function BookingPage() {
                 </div>
               </div>
 
-              {/* Submit Button */}
               <div className="pt-4">
+                {/* LOGIKA TOMBOL SUBMIT */}
                 <button 
                   type="submit" 
-                  disabled={loading || !time || !isSnapReady} 
-                  style={{ backgroundColor: (!time || loading || !isSnapReady) ? '#F1F5F9' : primaryColor }} 
+                  disabled={loading || !time || (isDpEnabled && !isSnapReady)} 
+                  style={{ backgroundColor: (!time || loading || (isDpEnabled && !isSnapReady)) ? '#F1F5F9' : primaryColor }} 
                   className={`
                     w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl transition-all duration-300
                     flex items-center justify-center gap-3
-                    ${(!time || loading || !isSnapReady) ? 'text-slate-300 cursor-not-allowed shadow-none' : 'text-white hover:shadow-2xl hover:-translate-y-1 active:scale-95'}
+                    ${(!time || loading || (isDpEnabled && !isSnapReady)) ? 'text-slate-300 cursor-not-allowed shadow-none' : 'text-white hover:shadow-2xl hover:-translate-y-1 active:scale-95'}
                   `}
                 >
                   {loading ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      <Wallet size={16} />
-                      <span>Bayar DP Rp {siteSettings?.dp_amount.toLocaleString()}</span>
+                      {/* GANTI ICON DAN TEXT TERGANTUNG STATUS DP */}
+                      {isDpEnabled ? <Wallet size={16} /> : <Send size={16} />}
+                      <span>
+                        {isDpEnabled 
+                          ? `Bayar DP Rp ${siteSettings?.dp_amount.toLocaleString()}` 
+                          : 'Booking Sekarang'
+                        }
+                      </span>
                     </>
                   )}
                 </button>
+                
+                {/* Footer text berubah tergantung DP */}
                 <p className="text-center mt-6 text-[10px] text-slate-400 font-medium">
-                  Pembayaran aman didukung oleh Midtrans
+                  {isDpEnabled 
+                    ? "Pembayaran aman didukung oleh Midtrans" 
+                    : "Konfirmasi pesanan via WhatsApp"
+                  }
                 </p>
               </div>
 
