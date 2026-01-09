@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { 
   Wallet, CalendarDays, ImageIcon, 
   Scissors, Utensils, BedDouble, GraduationCap, 
-  ArrowRight, CheckCircle2, MapPin, Clock, Send
+  ArrowRight, CheckCircle2, Clock, Send
 } from 'lucide-react' 
 import Script from 'next/script'
 
@@ -263,9 +263,14 @@ export default function BookingPage() {
                           </div>
                           <span className="text-sm font-bold">{s.name}</span>
                         </div>
-                        <span className={`text-xs font-mono font-medium ${isSelected ? 'text-slate-200' : 'text-slate-400'}`}>
-                          Rp {s.price.toLocaleString()}
-                        </span>
+                        
+                        {/* --- HARGA HANYA MUNCUL JIKA DP AKTIF --- */}
+                        {isDpEnabled && (
+                          <span className={`text-xs font-mono font-medium ${isSelected ? 'text-slate-200' : 'text-slate-400'}`}>
+                            Rp {s.price.toLocaleString()}
+                          </span>
+                        )}
+
                       </button>
                     )
                   })}
