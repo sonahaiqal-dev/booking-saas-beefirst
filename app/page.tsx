@@ -174,10 +174,10 @@ export default function BookingPage() {
 
            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
               {[
-                { icon: Scissors, label: "Salon & Spa", color: "text-pink-500", bg: "hover:bg-pink-50", link: "#" },
-                { icon: Utensils, label: "Resto & Cafe", color: "text-orange-500", bg: "hover:bg-orange-50", link: "#" },
-                { icon: BedDouble, label: "Guest House", color: "text-blue-500", bg: "hover:bg-blue-50", link: "#" },
-                { icon: GraduationCap, label: "Education", color: "text-emerald-500", bg: "hover:bg-emerald-50", link: "#" }
+                { icon: Scissors, label: "Salon & Spa", color: "text-pink-500", bg: "hover:bg-pink-50", link: "https://sonahaiqal-dev.github.io/contoh-landing-page-salon/" },
+                { icon: Utensils, label: "Resto & Cafe", color: "text-orange-500", bg: "hover:bg-orange-50", link: "https://sonahaiqal-dev.github.io/landing-page-resto/" },
+                { icon: BedDouble, label: "Guest House", color: "text-blue-500", bg: "hover:bg-blue-50", link: "https://sonahaiqal-dev.github.io/landing-page-guesthome/" },
+                { icon: GraduationCap, label: "Education", color: "text-emerald-500", bg: "hover:bg-emerald-50", link: "https://sonahaiqal-dev.github.io/landing-page-bimbel/" }
               ].map((item, idx) => (
                 <a 
                   key={idx}
